@@ -4,6 +4,7 @@
 const START_DATETIME_KEY = 'trackerStartDateTime';
 const DAILY_SAVING_KEY = 'trackerDailySaving';
 const TRACKER_LABEL_KEY = 'trackerLabel';
+const TREAT_LOG_KEY = 'trackerTreatLog'; // New key for the JSON array of treats
 let intervalId;
 
 // Load settings when the page is fully loaded
@@ -26,6 +27,41 @@ function getFormattedDateTime(date) {
     };
 }
 
+/**
+ * Gets a currency formatter.
+ */
+function getCurrencyFormatter() {
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+}
+
+/**
+ * Retrieves the current treats log array from Local Storage.
+ * Returns an array, or an empty array if none exists.
+ */
+function getTreatsLog() {
+    const logJson = localStorage.getItem(TREAT_LOG_KEY);
+    try {
+        return logJson ? JSON.parse(logJson) : [];
+    } catch (e) {
+        console.error("Error parsing treat log from localStorage:", e);
+        return [];
+    }
+}
+
+/**
+ * Calculates the sum of all treat amounts in the log.
+ * @param {Array} treatLog - The array of treat objects.
+ * @returns {number} The total amount spent on treats.
+ */
+function calculateTotalTreatsSpent(treatLog) {
+    return treatLog.reduce((sum, treat) => sum + treat.amount, 0);
+}
+
 
 /**
  * Loads and displays the stored tracking settings, and sets defaults if empty.
@@ -33,7 +69,7 @@ function getFormattedDateTime(date) {
 function loadSettings() {
     const startDateTime = localStorage.getItem(START_DATETIME_KEY);
     const dailySaving = localStorage.getItem(DAILY_SAVING_KEY);
-    const trackerLabel = localStorage.getItem(TRACKER_LABEL_KEY); // Load the label
+    const trackerLabel = localStorage.getItem(TRACKER_LABEL_KEY);
 
     // Get elements
     const inputGroup = document.querySelector('.input-group');
@@ -43,6 +79,12 @@ function loadSettings() {
     const startDateInput = document.getElementById('startDate');
     const startTimeInput = document.getElementById('startTime');
     const trackerLabelInput = document.getElementById('trackerLabel');
+    const treatInputGroup = document.getElementById('treatInputGroup');
+
+    // Hide treat input on initial load
+    if (treatInputGroup) {
+        treatInputGroup.classList.add('hidden');
+    }
 
     // Clear any existing interval before starting a new one
     if (intervalId) {
@@ -90,7 +132,7 @@ function loadSettings() {
  */
 function saveSettings() {
     // Get values from input fields
-    const trackerLabelInput = document.getElementById('trackerLabel').value.trim(); // Get label
+    const trackerLabelInput = document.getElementById('trackerLabel').value.trim();
     const startDateInput = document.getElementById('startDate').value;
     const startTimeInput = document.getElementById('startTime').value;
     const dailySavingInput = parseFloat(document.getElementById('dailySaving').value);
@@ -118,16 +160,136 @@ function saveSettings() {
     localStorage.setItem(START_DATETIME_KEY, startDateTime);
     localStorage.setItem(DAILY_SAVING_KEY, dailySavingInput.toString());
 
+    // Initialize treat log to an empty array only if it doesn't exist yet
+    if (localStorage.getItem(TREAT_LOG_KEY) === null) {
+        localStorage.setItem(TREAT_LOG_KEY, JSON.stringify([]));
+    }
+
     // Reload state to switch to display mode
     loadSettings();
 }
 
 /**
- * Calculates and updates the time elapsed and money saved.
+ * Toggles the visibility of the treat input form.
+ */
+function toggleTreatInput() {
+    const treatInputGroup = document.getElementById('treatInputGroup');
+    treatInputGroup.classList.toggle('hidden');
+    // Clear the input fields when showing it
+    document.getElementById('treatAmount').value = '';
+    document.getElementById('treatLabel').value = '';
+}
+
+/**
+ * Logs the treat amount, updates total treats spent, and refreshes the tracker.
+ */
+function logTreat() {
+    const treatAmountInput = document.getElementById('treatAmount').value;
+    const treatAmount = parseFloat(treatAmountInput);
+    const treatLabel = document.getElementById('treatLabel').value.trim();
+
+    if (!treatLabel) {
+        alert('Please enter a description for the treat.');
+        return;
+    }
+
+    if (isNaN(treatAmount) || treatAmount <= 0) {
+        alert('Please enter a valid amount greater than zero.');
+        return;
+    }
+
+    // --- CHECK FOR SUFFICIENT SAVINGS ---
+    const startDateTimeStr = localStorage.getItem(START_DATETIME_KEY);
+    const dailySaving = parseFloat(localStorage.getItem(DAILY_SAVING_KEY));
+    const treatLog = getTreatsLog();
+    const currentTotalTreats = calculateTotalTreatsSpent(treatLog);
+
+    const startDate = new Date(startDateTimeStr);
+    const now = new Date();
+    const timeElapsedMs = now - startDate;
+    const totalSeconds = Math.floor(timeElapsedMs / 1000);
+
+    const secondsInDay = 24 * 60 * 60;
+    const savingPerSecond = dailySaving / secondsInDay;
+    const grossMoneySaved = totalSeconds * savingPerSecond; // Total saved without subtracting treats
+
+    // Check if the current treat, when added to existing treats, exceeds gross savings
+    if (currentTotalTreats + treatAmount > grossMoneySaved) {
+        const remainingSavings = grossMoneySaved - currentTotalTreats;
+        const formatter = getCurrencyFormatter();
+        alert(`Cannot log treat. Your available net savings are currently ${formatter.format(remainingSavings)}. Treat amount (${formatter.format(treatAmount)}) is too high.`);
+        return; // Stop the function if there aren't enough savings
+    }
+    // --- END CHECK ---
+
+    // Create a new treat object
+    const newTreat = {
+        label: treatLabel,
+        amount: treatAmount,
+        timestamp: new Date().toISOString()
+    };
+
+    // Add the new treat to the log
+    treatLog.push(newTreat);
+
+    // Save the updated log
+    localStorage.setItem(TREAT_LOG_KEY, JSON.stringify(treatLog));
+
+    // Hide the input group and clear the fields
+    document.getElementById('treatInputGroup').classList.add('hidden');
+    document.getElementById('treatAmount').value = '';
+    document.getElementById('treatLabel').value = '';
+
+    // Refresh the display to show the updated savings and list
+    updateTracker();
+}
+
+/**
+ * Renders the list of logged treats.
+ * @param {Array} treatLog - The array of treat objects.
+ * @param {Intl.NumberFormat} formatter - The currency formatter object.
+ */
+function renderTreatsList(treatLog, formatter) {
+    const treatListElement = document.getElementById('treatList');
+    const treatListContainer = document.getElementById('treatListContainer');
+
+    if (treatLog.length === 0) {
+        treatListContainer.classList.add('hidden');
+        treatListElement.innerHTML = '';
+        return;
+    }
+
+    treatListContainer.classList.remove('hidden');
+
+    // Reverse the log to show the newest treats first
+    const reversedLog = [...treatLog].reverse();
+
+    treatListElement.innerHTML = reversedLog.map(treat => {
+        // Format the date/time for display
+        const date = new Date(treat.timestamp).toLocaleDateString(undefined, {
+            month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+        });
+
+        return `
+            <div class="treat-item">
+                <span class="treat-item-label">${treat.label} (${date})</span>
+                <span class="treat-item-amount">-${formatter.format(treat.amount)}</span>
+            </div>
+        `;
+    }).join('');
+}
+
+
+/**
+ * Calculates and updates the time elapsed and money saved (net).
  */
 function updateTracker() {
     const startDateTimeStr = localStorage.getItem(START_DATETIME_KEY);
     const dailySaving = parseFloat(localStorage.getItem(DAILY_SAVING_KEY));
+
+    // Treat logic
+    const treatLog = getTreatsLog();
+    const totalTreatsSpent = calculateTotalTreatsSpent(treatLog);
 
     if (!startDateTimeStr || isNaN(dailySaving)) return;
 
@@ -138,16 +300,15 @@ function updateTracker() {
 
     const timeDisplay = document.getElementById('timeDisplay');
     const moneySavedDisplay = document.getElementById('moneySavedDisplay');
+    const treatsSpentDisplay = document.getElementById('treatsSpentDisplay');
+    const formatter = getCurrencyFormatter();
 
     // --- Time Calculation ---
     if (timeElapsedMs < 0) {
-        // Date is in the future
-        timeDisplay.innerHTML = `
-            <div style="color: #D32F2F; width: 100%; text-align: center;">
-                Start time is in the future!
-            </div>
-        `;
+        // Date is in the future. Using CSS class for styling.
+        timeDisplay.innerHTML = `<div class="date-message">Start time is in the future!</div>`;
         moneySavedDisplay.textContent = '$0.00';
+        treatsSpentDisplay.textContent = formatter.format(totalTreatsSpent);
         clearInterval(intervalId);
         return;
     }
@@ -183,17 +344,22 @@ function updateTracker() {
     // --- Money Calculation ---
     const secondsInDay = 24 * 60 * 60;
     const savingPerSecond = dailySaving / secondsInDay;
-    const totalMoneySaved = totalSeconds * savingPerSecond;
+    const grossMoneySaved = totalSeconds * savingPerSecond; // Total saved without subtracting treats
 
-    // Display the money saved, formatted as currency
-    const formatter = new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-    });
+    // Calculate NET savings
+    let netMoneySaved = grossMoneySaved - totalTreatsSpent;
 
-    moneySavedDisplay.textContent = formatter.format(totalMoneySaved);
+    // Ensure savings don't go below zero
+    if (netMoneySaved < 0) {
+        netMoneySaved = 0;
+    }
+
+    // Display the net money saved and the total treats spent
+    moneySavedDisplay.textContent = formatter.format(netMoneySaved);
+    treatsSpentDisplay.textContent = formatter.format(totalTreatsSpent);
+
+    // Render the list of treats
+    renderTreatsList(treatLog, formatter);
 }
 
 /**
@@ -201,16 +367,22 @@ function updateTracker() {
  */
 function resetTracker() {
     if (confirm('Are you sure you want to reset the tracker? All data will be lost.')) {
-        localStorage.removeItem(TRACKER_LABEL_KEY); // Clear the label
+        localStorage.removeItem(TRACKER_LABEL_KEY);
         localStorage.removeItem(START_DATETIME_KEY);
         localStorage.removeItem(DAILY_SAVING_KEY);
+        localStorage.removeItem(TREAT_LOG_KEY); // Clear the entire JSON treat log
         clearInterval(intervalId); // Stop the update loop
 
-        // Clear input fields so loadSettings can set the new current defaults
+        // Clear input fields
         document.getElementById('trackerLabel').value = '';
         document.getElementById('startDate').value = '';
         document.getElementById('startTime').value = '';
         document.getElementById('dailySaving').value = '';
+
+        // Reset the treat input visibility and list
+        document.getElementById('treatInputGroup').classList.add('hidden');
+        document.getElementById('treatListContainer').classList.add('hidden');
+
         loadSettings(); // Reload to show the input form and set defaults
     }
 }

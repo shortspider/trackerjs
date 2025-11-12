@@ -1,5 +1,4 @@
 /* Made by Gemini */
-
 /* --- CSS Styling --- */
 :root {
     --primary-color: #4CAF50;
@@ -8,6 +7,9 @@
     --text-color: #333;
     --card-background: #ffffff;
     --shadow: 0 4px 8px rgba(0,0,0,0.1);
+    --treat-color: #FF9800;
+    --treat-background: #fff3e0;
+    --error-color: #D32F2F;
 }
 
 body {
@@ -57,7 +59,7 @@ label {
     color: var(--secondary-color);
 }
 
-input[type="date"], input[type="number"] {
+input[type="date"], input[type="time"], input[type="text"], input[type="number"] {
     width: 100%;
     padding: 10px;
     margin-bottom: 10px;
@@ -65,6 +67,11 @@ input[type="date"], input[type="number"] {
     border-radius: 4px;
     box-sizing: border-box;
     font-size: 16px;
+}
+
+/* Specific input margin adjustment for treat label */
+.treat-input-group input#treatLabel {
+    margin-bottom: 15px;
 }
 
 button {
@@ -84,16 +91,12 @@ button:hover {
     background-color: var(--secondary-color);
 }
 
-.reset-button {
-    margin-top: 20px;
-    background-color: #D32F2F; /* Red color for reset */
+/* --- Display Styles --- */
+
+.display-heading {
+    text-align: center;
 }
 
-.reset-button:hover {
-    background-color: #B71C1C;
-}
-
-/* Display Styles */
 .result-card {
     text-align: center;
     padding: 20px;
@@ -115,6 +118,12 @@ button:hover {
     font-size: 2.5em;
     font-weight: 700;
     margin: 5px 0;
+}
+
+.treat-log-label {
+    font-size: 0.8em;
+    opacity: 0.8;
+    margin-top: 5px;
 }
 
 .time-display {
@@ -143,6 +152,88 @@ button:hover {
     color: #666;
 }
 
+/* --- Action Buttons --- */
+
+.action-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+.action-buttons button {
+    flex-grow: 1;
+}
+
+.treat-log-button {
+    background-color: var(--treat-color); /* Orange for Treat */
+}
+.treat-log-button:hover {
+    background-color: #FB8C00; /* Slightly darker orange */
+}
+
+.log-treat-button {
+    background-color: var(--treat-color);
+}
+
+.reset-button {
+    background-color: var(--error-color); /* Red color for reset */
+}
+
+.reset-button:hover {
+    background-color: #B71C1C;
+}
+
+/* --- Treat Input Styles --- */
+
+.treat-input-group {
+    border: 1px dashed #ccc;
+    padding: 15px;
+    margin-top: 15px;
+    border-radius: 8px;
+    background: var(--treat-background); /* Light yellow background */
+}
+.treat-input-group label {
+    color: var(--treat-color); /* Orange text */
+}
+
+/* --- Treat List Display Styles --- */
+
+.treat-list-container {
+    margin-top: 15px;
+    padding: 10px;
+    background: #f0f0f0;
+    border-radius: 6px;
+}
+.treat-list-container h3 {
+    margin-top: 0;
+    color: var(--secondary-color);
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 5px;
+    font-size: 1.1em;
+}
+.treat-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 0;
+    font-size: 0.9em;
+    border-bottom: 1px dotted #ccc;
+}
+.treat-item:last-child {
+    border-bottom: none;
+}
+.treat-item-label {
+    font-weight: 500;
+}
+.treat-item-amount {
+    color: var(--error-color);
+    font-weight: 600;
+}
+
+/* --- Utility Classes --- */
 .hidden {
     display: none;
+}
+.date-message {
+    color: var(--error-color);
+    width: 100%;
+    text-align: center;
 }

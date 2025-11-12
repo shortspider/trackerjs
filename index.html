@@ -1,5 +1,5 @@
 <!-- Made by Gemini -->
-\<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -28,17 +28,38 @@
         </div>
 
         <div id="trackerDisplay" class="display-group hidden">
-            <h2 style="text-align: center;">🚀 <span id="displayLabel"></span> Since <span id="displayDateTime"></span></h2>
+            <h2 class="display-heading">🚀 <span id="displayLabel"></span> Since <span id="displayDateTime"></span></h2>
 
             <div class="time-display" id="timeDisplay">
                 </div>
 
             <div class="result-card">
-                <h2>Total Money Saved</h2>
+                <h2>Total Money Saved (Net)</h2>
                 <div class="result-value" id="moneySavedDisplay">$0.00</div>
+                <div class="treat-log-label">
+                    Treats Logged: <span id="treatsSpentDisplay">$0.00</span>
+                </div>
             </div>
 
-            <button onclick="resetTracker()" class="reset-button">Reset Tracker</button>
+            <div id="treatInputGroup" class="hidden treat-input-group">
+                <label for="treatLabel">Treat Description:</label>
+                <input type="text" id="treatLabel" placeholder="e.g., New video game">
+
+                <label for="treatAmount" class="treat-label">Amount spent on Treat:</label>
+                <input type="number" id="treatAmount" min="0" step="0.01" placeholder="e.g., 3.50">
+                <button onclick="logTreat()" class="log-treat-button">Log Treat</button>
+            </div>
+
+            <div id="treatListContainer" class="treat-list-container hidden">
+                <h3>Treat Log</h3>
+                <div id="treatList">
+                    </div>
+            </div>
+
+            <div class="action-buttons">
+                <button onclick="toggleTreatInput()" class="treat-log-button">Log a Treat</button>
+                <button onclick="resetTracker()" class="reset-button">Reset Tracker</button>
+            </div>
         </div>
     </div>
 
