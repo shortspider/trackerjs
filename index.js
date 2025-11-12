@@ -1,8 +1,7 @@
 // Made with Gemini
-
 // --- JavaScript Logic ---
 
-const START_DATE_KEY = 'trackerStartDate';
+const START_DATETIME_KEY = 'trackerStartDateTime';
 const DAILY_SAVING_KEY = 'trackerDailySaving';
 let intervalId;
 
@@ -10,37 +9,71 @@ let intervalId;
 document.addEventListener('DOMContentLoaded', loadSettings);
 
 /**
- * Loads and displays the stored tracking settings.
+ * Helper function to format a Date object into 'YYYY-MM-DD' (date) and 'HH:MM' (time).
+ */
+function getFormattedDateTime(date) {
+    // Get components using local time zone
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+
+    return {
+        date: `${year}-${month}-${day}`, // Format required by input type="date"
+        time: `${hours}:${minutes}`      // Format required by input type="time"
+    };
+}
+
+
+/**
+ * Loads and displays the stored tracking settings, and sets defaults if empty.
  */
 function loadSettings() {
-    const startDate = localStorage.getItem(START_DATE_KEY);
+    const startDateTime = localStorage.getItem(START_DATETIME_KEY);
     const dailySaving = localStorage.getItem(DAILY_SAVING_KEY);
 
     // Get elements
     const inputGroup = document.querySelector('.input-group');
     const trackerDisplay = document.getElementById('trackerDisplay');
-    const displayDate = document.getElementById('displayDate');
+    const displayDateTime = document.getElementById('displayDateTime');
+    const startDateInput = document.getElementById('startDate');
+    const startTimeInput = document.getElementById('startTime');
 
     // Clear any existing interval before starting a new one
     if (intervalId) {
         clearInterval(intervalId);
     }
 
-    if (startDate && dailySaving) {
-        // Settings found: Hide input, show tracker
+    if (startDateTime && dailySaving) {
+        // Tracker is running: Hide input, show display
         inputGroup.classList.add('hidden');
         trackerDisplay.classList.remove('hidden');
 
-        // Display the start date in a readable format
-        displayDate.textContent = new Date(startDate).toLocaleDateString();
+        const dateOptions = {
+            year: 'numeric', month: 'short', day: 'numeric',
+            hour: '2-digit', minute: '2-digit'
+        };
+        // Display the combined date and time
+        displayDateTime.textContent = new Date(startDateTime).toLocaleDateString(undefined, dateOptions);
 
         // Start the live update
         updateTracker();
         intervalId = setInterval(updateTracker, 1000); // Update every second
     } else {
-        // No settings: Show input, hide tracker
+        // Tracker is NOT running: Show input, set defaults
         inputGroup.classList.remove('hidden');
         trackerDisplay.classList.add('hidden');
+
+        // --- FIXED DEFAULTING LOGIC ---
+        // Create a NEW Date object here to ensure it reflects the precise moment the page loads.
+        const now = new Date();
+        const formatted = getFormattedDateTime(now);
+
+        // Set the input fields to the current date and time
+        startDateInput.value = formatted.date;
+        startTimeInput.value = formatted.time;
+        // --- END FIXED DEFAULTING LOGIC ---
     }
 }
 
@@ -50,10 +83,11 @@ function loadSettings() {
 function saveSettings() {
     // Get values from input fields
     const startDateInput = document.getElementById('startDate').value;
+    const startTimeInput = document.getElementById('startTime').value;
     const dailySavingInput = parseFloat(document.getElementById('dailySaving').value);
 
-    if (!startDateInput) {
-        alert('Please select a start date.');
+    if (!startDateInput || !startTimeInput) {
+        alert('Please select both a start date and a start time.');
         return;
     }
 
@@ -62,8 +96,11 @@ function saveSettings() {
         return;
     }
 
+    // Combine date and time into a single ISO 8601 string: YYYY-MM-DDTHH:MM:00
+    const startDateTime = `${startDateInput}T${startTimeInput}:00`;
+
     // Save to Local Storage
-    localStorage.setItem(START_DATE_KEY, startDateInput);
+    localStorage.setItem(START_DATETIME_KEY, startDateTime);
     localStorage.setItem(DAILY_SAVING_KEY, dailySavingInput.toString());
 
     // Reload state to switch to display mode
@@ -74,12 +111,13 @@ function saveSettings() {
  * Calculates and updates the time elapsed and money saved.
  */
 function updateTracker() {
-    const startDateStr = localStorage.getItem(START_DATE_KEY);
+    const startDateTimeStr = localStorage.getItem(START_DATETIME_KEY);
     const dailySaving = parseFloat(localStorage.getItem(DAILY_SAVING_KEY));
 
-    if (!startDateStr || isNaN(dailySaving)) return;
+    if (!startDateTimeStr || isNaN(dailySaving)) return;
 
-    const startDate = new Date(startDateStr);
+    // Use the stored string directly to create the Date object
+    const startDate = new Date(startDateTimeStr);
     const now = new Date();
     const timeElapsedMs = now - startDate;
 
@@ -91,7 +129,7 @@ function updateTracker() {
         // Date is in the future
         timeDisplay.innerHTML = `
             <div style="color: #D32F2F; width: 100%; text-align: center;">
-                Start date is in the future!
+                Start time is in the future!
             </div>
         `;
         moneySavedDisplay.textContent = '$0.00';
@@ -100,7 +138,9 @@ function updateTracker() {
     }
 
     // Convert milliseconds to time units
-    let seconds = Math.floor(timeElapsedMs / 1000);
+    let totalSeconds = Math.floor(timeElapsedMs / 1000);
+    let seconds = totalSeconds;
+
     let minutes = Math.floor(seconds / 60);
     let hours = Math.floor(minutes / 60);
     let days = Math.floor(hours / 24);
@@ -126,10 +166,9 @@ function updateTracker() {
     timeDisplay.innerHTML = timeHtml;
 
     // --- Money Calculation ---
-    // Total seconds passed * (Daily Saving / Seconds in a Day)
     const secondsInDay = 24 * 60 * 60;
     const savingPerSecond = dailySaving / secondsInDay;
-    const totalMoneySaved = (timeElapsedMs / 1000) * savingPerSecond;
+    const totalMoneySaved = totalSeconds * savingPerSecond;
 
     // Display the money saved, formatted as currency
     const formatter = new Intl.NumberFormat('en-US', {
@@ -147,12 +186,14 @@ function updateTracker() {
  */
 function resetTracker() {
     if (confirm('Are you sure you want to reset the tracker? All data will be lost.')) {
-        localStorage.removeItem(START_DATE_KEY);
+        localStorage.removeItem(START_DATETIME_KEY);
         localStorage.removeItem(DAILY_SAVING_KEY);
         clearInterval(intervalId); // Stop the update loop
-        // Clear input fields for a fresh start
+
+        // Clear input fields so loadSettings can set the new current defaults
         document.getElementById('startDate').value = '';
+        document.getElementById('startTime').value = '';
         document.getElementById('dailySaving').value = '';
-        loadSettings(); // Reload to show the input form
+        loadSettings(); // Reload to show the input form and set defaults
     }
 }
