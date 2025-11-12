@@ -1,8 +1,9 @@
-// Made with Gemini
+// Made by Gemini
 // --- JavaScript Logic ---
 
 const START_DATETIME_KEY = 'trackerStartDateTime';
 const DAILY_SAVING_KEY = 'trackerDailySaving';
+const TRACKER_LABEL_KEY = 'trackerLabel';
 let intervalId;
 
 // Load settings when the page is fully loaded
@@ -32,20 +33,23 @@ function getFormattedDateTime(date) {
 function loadSettings() {
     const startDateTime = localStorage.getItem(START_DATETIME_KEY);
     const dailySaving = localStorage.getItem(DAILY_SAVING_KEY);
+    const trackerLabel = localStorage.getItem(TRACKER_LABEL_KEY); // Load the label
 
     // Get elements
     const inputGroup = document.querySelector('.input-group');
     const trackerDisplay = document.getElementById('trackerDisplay');
     const displayDateTime = document.getElementById('displayDateTime');
+    const displayLabel = document.getElementById('displayLabel');
     const startDateInput = document.getElementById('startDate');
     const startTimeInput = document.getElementById('startTime');
+    const trackerLabelInput = document.getElementById('trackerLabel');
 
     // Clear any existing interval before starting a new one
     if (intervalId) {
         clearInterval(intervalId);
     }
 
-    if (startDateTime && dailySaving) {
+    if (startDateTime && dailySaving && trackerLabel) {
         // Tracker is running: Hide input, show display
         inputGroup.classList.add('hidden');
         trackerDisplay.classList.remove('hidden');
@@ -54,7 +58,8 @@ function loadSettings() {
             year: 'numeric', month: 'short', day: 'numeric',
             hour: '2-digit', minute: '2-digit'
         };
-        // Display the combined date and time
+        // Display the label and the combined date and time
+        displayLabel.textContent = trackerLabel;
         displayDateTime.textContent = new Date(startDateTime).toLocaleDateString(undefined, dateOptions);
 
         // Start the live update
@@ -65,15 +70,18 @@ function loadSettings() {
         inputGroup.classList.remove('hidden');
         trackerDisplay.classList.add('hidden');
 
-        // --- FIXED DEFAULTING LOGIC ---
-        // Create a NEW Date object here to ensure it reflects the precise moment the page loads.
+        // Set default label value from storage if available
+        if (trackerLabel) {
+            trackerLabelInput.value = trackerLabel;
+        }
+
+        // Set default date and time to current
         const now = new Date();
         const formatted = getFormattedDateTime(now);
 
         // Set the input fields to the current date and time
         startDateInput.value = formatted.date;
         startTimeInput.value = formatted.time;
-        // --- END FIXED DEFAULTING LOGIC ---
     }
 }
 
@@ -82,9 +90,15 @@ function loadSettings() {
  */
 function saveSettings() {
     // Get values from input fields
+    const trackerLabelInput = document.getElementById('trackerLabel').value.trim(); // Get label
     const startDateInput = document.getElementById('startDate').value;
     const startTimeInput = document.getElementById('startTime').value;
     const dailySavingInput = parseFloat(document.getElementById('dailySaving').value);
+
+    if (!trackerLabelInput) {
+        alert('Please enter a label for what you are tracking.');
+        return;
+    }
 
     if (!startDateInput || !startTimeInput) {
         alert('Please select both a start date and a start time.');
@@ -99,7 +113,8 @@ function saveSettings() {
     // Combine date and time into a single ISO 8601 string: YYYY-MM-DDTHH:MM:00
     const startDateTime = `${startDateInput}T${startTimeInput}:00`;
 
-    // Save to Local Storage
+    // Save all three values to Local Storage
+    localStorage.setItem(TRACKER_LABEL_KEY, trackerLabelInput);
     localStorage.setItem(START_DATETIME_KEY, startDateTime);
     localStorage.setItem(DAILY_SAVING_KEY, dailySavingInput.toString());
 
@@ -186,11 +201,13 @@ function updateTracker() {
  */
 function resetTracker() {
     if (confirm('Are you sure you want to reset the tracker? All data will be lost.')) {
+        localStorage.removeItem(TRACKER_LABEL_KEY); // Clear the label
         localStorage.removeItem(START_DATETIME_KEY);
         localStorage.removeItem(DAILY_SAVING_KEY);
         clearInterval(intervalId); // Stop the update loop
 
         // Clear input fields so loadSettings can set the new current defaults
+        document.getElementById('trackerLabel').value = '';
         document.getElementById('startDate').value = '';
         document.getElementById('startTime').value = '';
         document.getElementById('dailySaving').value = '';

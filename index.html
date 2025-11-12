@@ -1,22 +1,26 @@
-<!-- Made with Gemini -->
-<!DOCTYPE html>
+<!-- Made by Gemini -->
+\<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trackerjs</title>
+    <title>TrackerJS</title>
     <link rel="stylesheet" href="index.css">
 </head>
 <body>
     <div class="container">
-        <h1>🌱 Trackerjs</h1>
+        <h1>🌱 TrackerJS</h1>
 
         <div class="input-group">
+            <label for="trackerLabel">What are you tracking?</label>
+            <input type="text" id="trackerLabel" placeholder="e.g., Since I Quit Coffee">
+
             <label for="startDate">Start Date:</label>
             <input type="date" id="startDate">
 
             <label for="startTime">Start Time:</label>
-            <input type="time" id="startTime" value="00:00">
+            <input type="time" id="startTime">
+
             <label for="dailySaving">Estimated Daily Money Saved (e.g., 5.50):</label>
             <input type="number" id="dailySaving" min="0" step="0.01">
 
@@ -24,7 +28,7 @@
         </div>
 
         <div id="trackerDisplay" class="display-group hidden">
-            <h2 style="text-align: center;">🚀 Progress Since <span id="displayDateTime"></span></h2>
+            <h2 style="text-align: center;">🚀 <span id="displayLabel"></span> Since <span id="displayDateTime"></span></h2>
 
             <div class="time-display" id="timeDisplay">
                 </div>
